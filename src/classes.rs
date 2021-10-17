@@ -28,23 +28,32 @@ pub struct Data {
     // category_id: String,
 
     #[nserde(rename = "pronunciation")]
-    pub pronunciation: Pronunciation,
+    pub pronunciation: Option<Pronunciation>,
 
     // #[nserde(rename = "confusables")]
     // confusables: Vec<Option<serde_json::Value>>,
 
-    // #[nserde(rename = "supplementaryNotes")]
-    // supplementary_notes: Vec<Option<serde_json::Value>>,
+    #[nserde(rename = "supplementaryNotes")]
+    pub supplementary_notes: Option<Vec<SupplementaryNote>>,
 
     // #[nserde(rename = "etymology")]
     // etymology: Vec<Option<serde_json::Value>>,
 
     #[nserde(rename = "exampleSentences")]
-    pub example_sentences: Vec<ExampleSentence>,
+    pub example_sentences: Option<Vec<ExampleSentence>>,
 
-    #[nserde(rename = "slugLuna")]
-    slug_luna: String,
+    // #[nserde(rename = "slugLuna")]
+    // slug_luna: String,
 }
+#[derive(SerJson, DeJson)]
+pub struct SupplementaryNote {
+    #[nserde(rename = "type")]
+    pub supplementary_note_type: String,
+
+    #[nserde(rename = "content")]
+    pub content: String,
+}
+
 
 #[derive(SerJson, DeJson)]
 pub struct DefinitionData {
@@ -78,8 +87,8 @@ pub struct Definition {
     #[nserde(rename = "definition")]
     pub definition: String,
 
-    #[nserde(rename = "thesRid")]
-    thes_rid: String,
+    // #[nserde(rename = "thesRid")]
+    // thes_rid: String,
 
     #[nserde(rename = "pos")]
     pos: String,
@@ -97,7 +106,7 @@ pub struct Definition {
 #[derive(SerJson, DeJson)]
 pub struct Onym {
     #[nserde(rename = "similarity")]
-    similarity: String,
+    pub similarity: String,
 
     #[nserde(rename = "isInformal")]
     is_informal: String,
@@ -160,13 +169,13 @@ pub struct Source {
 #[derive(SerJson, DeJson)]
 pub struct Pronunciation {
     #[nserde(rename = "ipa")]
-    pub ipa: String,
+    pub ipa: Option<String>,
 
     #[nserde(rename = "spell")]
-    pub spell: String,
+    pub spell: Option<String>,
 
     #[nserde(rename = "audio")]
-    audio: Audio,
+    audio: Option<Audio>,
 }
 
 #[derive(SerJson, DeJson)]
