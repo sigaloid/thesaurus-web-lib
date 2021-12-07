@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 nanoserde = "0.1.29"
+serde = { version = "1.0", features = ["derive"] } 
 ureq = "2.2.0"
 urlencoding = "2.1.0"
 # serde = "1.0.130"
