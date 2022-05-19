@@ -31,266 +31,303 @@
 )]
 #![allow(dead_code, clippy::too_many_lines)]
 
-pub fn lookup_word(word: &String) -> Option<SynonymInfo> {
+pub fn lookup_word(word: impl ToString) -> Option<SynonymInfo> {
     let request = ureq::get(&format!(
         "https://tuna.thesaurus.com/pageData/{}",
-        urlencoding::encode(&word)
+        urlencoding::encode(&word.to_string())
     ))
     .call()
     .ok()?
     .into_string()
     .ok()?;
-    let object: SynonymInfo = nanoserde::DeJson::deserialize_json(&request).ok()?;
+
+    let object: SynonymInfo = serde_json::from_str(&request).ok()?;
     Some(object)
 }
 
-
-// Example code that deserializes and serializes the model.
-// extern crate serde;
-// #[macro_use]
-// extern crate serde_derive;
-// extern crate serde_json;
-//
-// use generated_module::[object Object];
-//
-// fn main() {
-//     let json = r#"{"answer": 42}"#;
-//     let model: [object Object] = serde_json::from_str(&json).unwrap();
-// }
-
-// extern crate serde_derive;
-use nanoserde::{DeJson, SerJson};
 use serde::{Deserialize, Serialize};
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct SynonymInfo {
-    #[nserde(rename = "data")]
+    #[serde(rename = "data")]
     pub data: Data,
 }
+impl SynonymInfo {
+    pub fn words(&self) -> Vec<String> {
+        let mut x = vec![];
+        for def in &self.data.definition_data.definitions {
+            for i in &def.synonyms {
+                x.push(i.term.clone());
+            }
+            for i in &def.antonyms {
+                x.push(i.term.clone());
+            }
+        }
+        x
+    }
+    // pub fn synonyms(&self) -> Vec<(String, Vec<String>)> {
+    //     let mut x = vec![];
+    //     for def in &self.data.definition_data.definitions {
+    //         let mut y = vec![];
+    //         for i in &def.synonyms {
+    //             y.push(i.term.clone());
+    //         }
+    //         x.push((&def.definition, y))
+    //     }
+    //     x
+    // }
+    pub fn defs(
+        &self,
+    ) -> (
+        Option<Pronunciation>,
+        Vec<(String, Vec<(String, String)>, Vec<(String, String)>)>,
+    ) {
+        let mut x = vec![];
+        for def in &self.data.definition_data.definitions {
+            let mut syns = vec![];
+            for i in &def.synonyms {
+                syns.push((i.term.clone(), i.similarity.clone()));
+            }
+            let mut ants = vec![];
+            for i in &def.antonyms {
+                ants.push((i.term.clone(), i.similarity.clone()));
+            }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+            x.push((def.definition.clone(), syns, ants))
+        }
+        (self.data.pronunciation.clone(), x)
+    }
+    // pub fn antonyms(&self) -> Vec<(String, Vec<String>)> {
+    //     let mut x = vec![];
+    //     for def in &self.data.definition_data.definitions {
+    //         let mut y = vec![];
+    //         for i in &def.antonyms {
+    //             y.push(i.term.clone());
+    //         }
+    //         x.push((&def.definition, y))
+    //     }
+    //     x
+    // }
+}
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Data {
-    #[nserde(rename = "definitionData")]
+    #[serde(rename = "definitionData")]
     pub definition_data: DefinitionData,
 
-    // #[nserde(rename = "categoryId")]
+    // #[serde(rename = "categoryId")]
     // category_id: String,
-    #[nserde(rename = "pronunciation")]
+    #[serde(rename = "pronunciation")]
     pub pronunciation: Option<Pronunciation>,
-
-    // #[nserde(rename = "confusables")]
-    // confusables: Vec<Option<serde_json::Value>>,
-    #[nserde(rename = "supplementaryNotes")]
-    pub supplementary_notes: Option<Vec<SupplementaryNote>>,
-
-    // #[nserde(rename = "etymology")]
-    // etymology: Vec<Option<serde_json::Value>>,
-    #[nserde(rename = "exampleSentences")]
+    // // #[serde(rename = "confusables")]
+    // // confusables: Vec<Option<serde_json::Value>>,
+    // #[serde(rename = "supplementaryNotes")]
+    // pub supplementary_notes: Option<Vec<SupplementaryNote>>,
+    //
+    // // #[serde(rename = "etymology")]
+    // // etymology: Vec<Option<serde_json::Value>>,
+    #[serde(rename = "exampleSentences")]
     pub example_sentences: Option<Vec<ExampleSentence>>,
-    // #[nserde(rename = "slugLuna")]
-    // slug_luna: String,
+    // // #[serde(rename = "slugLuna")]
+    // // slug_luna: String,
 }
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct SupplementaryNote {
-    #[nserde(rename = "type")]
+    #[serde(rename = "type")]
     pub supplementary_note_type: String,
 
-    #[nserde(rename = "content")]
+    #[serde(rename = "content")]
     pub content: String,
 }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct DefinitionData {
-    #[nserde(rename = "entry")]
+    #[serde(rename = "entry")]
     pub entry: String,
 
-    #[nserde(rename = "type")]
+    #[serde(rename = "type")]
     definition_data_type: String,
 
-    #[nserde(rename = "definitions")]
+    #[serde(rename = "definitions")]
     pub definitions: Vec<Definition>,
 
-    #[nserde(rename = "slug")]
+    #[serde(rename = "slug")]
     slug: String,
 
-    #[nserde(rename = "rawSlug")]
+    #[serde(rename = "rawSlug")]
     raw_slug: String,
 
-    #[nserde(rename = "searchQueries")]
+    #[serde(rename = "searchQueries")]
     search_queries: Vec<String>,
 }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Definition {
-    // #[nserde(rename = "isInformal")]
+    // #[serde(rename = "isInformal")]
     // is_informal: Option<serde_json::Value>,
-    #[nserde(rename = "isVulgar")]
+    #[serde(rename = "isVulgar")]
     is_vulgar: String,
 
-    #[nserde(rename = "definition")]
+    #[serde(rename = "definition")]
     pub definition: String,
 
-    // #[nserde(rename = "thesRid")]
+    // #[serde(rename = "thesRid")]
     // thes_rid: String,
-    #[nserde(rename = "pos")]
-    pos: String,
+    #[serde(rename = "pos")]
+    pub pos: String,
 
-    #[nserde(rename = "synonyms")]
+    #[serde(rename = "synonyms")]
     pub synonyms: Vec<Onym>,
 
-    #[nserde(rename = "antonyms")]
+    #[serde(rename = "antonyms")]
     pub antonyms: Vec<Onym>,
-    // #[nserde(rename = "note")]
+    // #[serde(rename = "note")]
     // note: Option<serde_json::Value>,
 }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Onym {
-    #[nserde(rename = "similarity")]
+    #[serde(rename = "similarity")]
     pub similarity: String,
 
-    #[nserde(rename = "isInformal")]
+    #[serde(rename = "isInformal")]
     is_informal: String,
 
-    // #[nserde(rename = "isVulgar")]
+    // #[serde(rename = "isVulgar")]
     // is_vulgar: Option<serde_json::Value>,
-    #[nserde(rename = "term")]
+    #[serde(rename = "term")]
     pub term: String,
 
-    #[nserde(rename = "targetTerm")]
+    #[serde(rename = "targetTerm")]
     pub target_term: Option<String>,
 
-    #[nserde(rename = "targetSlug")]
+    #[serde(rename = "targetSlug")]
     pub target_slug: Option<String>,
 }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ExampleSentence {
-    #[nserde(rename = "source")]
-    source: Source,
+    #[serde(rename = "source")]
+    pub source: Source,
 
-    #[nserde(rename = "profanity")]
+    #[serde(rename = "profanity")]
     profanity: i64,
 
-    #[nserde(rename = "sentence")]
+    #[serde(rename = "sentence")]
     pub sentence: String,
 }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Source {
-    #[nserde(rename = "source_name")]
+    #[serde(rename = "source_name")]
     source_source_name: Option<String>,
 
-    #[nserde(rename = "author")]
-    author: String,
+    #[serde(rename = "author")]
+    pub author: String,
 
-    #[nserde(rename = "url")]
-    url: String,
+    #[serde(rename = "url")]
+    pub url: String,
 
-    #[nserde(rename = "title")]
-    title: String,
+    #[serde(rename = "title")]
+    pub title: String,
 
-    #[nserde(rename = "sourceName")]
-    source_name: Option<String>,
+    #[serde(rename = "sourceName")]
+    pub source_name: Option<String>,
 
-    #[nserde(rename = "publicationDate")]
+    #[serde(rename = "publicationDate")]
     publication_date: Option<String>,
 
-    #[nserde(rename = "publication_date")]
+    #[serde(rename = "publication_date")]
     source_publication_date: Option<String>,
 
-    #[nserde(rename = "type")]
+    #[serde(rename = "type")]
     source_type: Type,
 
-    #[nserde(rename = "abbreviation")]
+    #[serde(rename = "abbreviation")]
     abbreviation: Abbreviation,
 }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Pronunciation {
-    #[nserde(rename = "ipa")]
+    #[serde(rename = "ipa")]
     pub ipa: Option<String>,
 
-    #[nserde(rename = "spell")]
+    #[serde(rename = "spell")]
     pub spell: Option<String>,
 
-    #[nserde(rename = "audio")]
+    #[serde(rename = "audio")]
     pub audio: Option<Audio>,
 }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Audio {
-    #[nserde(rename = "audio/ogg")]
+    #[serde(rename = "audio/ogg")]
     pub audio_ogg: String,
 
-    #[nserde(rename = "audio/mpeg")]
+    #[serde(rename = "audio/mpeg")]
     pub audio_mpeg: String,
 }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum Abbreviation {
-    #[nserde(rename = "gbg")]
+    #[serde(rename = "gbg")]
     Gbg,
 
-    #[nserde(rename = "nlp")]
+    #[serde(rename = "nlp")]
     Nlp,
 }
 
-#[derive(SerJson, DeJson, Deserialize, Serialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum Type {
-    #[nserde(rename = "const")]
+    #[serde(rename = "const")]
     Const,
 }
 
+// pub fn suggestions(frag: String, limit: usize) -> Option<Vec<(String, String)>> {
+//     let request = ureq::get(&format!(
+//         "https://api-portal.dictionary.com/dcom/list/{}?limit={}",
+//         urlencoding::encode(&frag),
+//         limit
+//     ))
+//     .call()
+//     .ok()?
+//     .into_string()
+//     .ok()?;
+//     let object: Root = nanoserde::DeJson::deserialize_json(&request).ok()?;
+//     let mut v = vec![];
+//     for d in object.data {
+//         v.push((d.display_form, d.url))
+//     }
+//     Some(v)
+// }
 
-
-pub fn suggestions(frag: String, limit: usize) -> Option<Vec<(String, String)>> {
-    let request = ureq::get(&format!(
-        "https://api-portal.dictionary.com/dcom/list/{}?limit={}",
-        urlencoding::encode(&frag), limit
-    ))
-    .call()
-    .ok()?
-    .into_string()
-    .ok()?;
-    let object: Root = nanoserde::DeJson::deserialize_json(&request).ok()?;
-    let mut v = vec![];
-    for d in object.data { 
-        v.push((d.display_form, d.url))
-    }
-    Some(v)
-}
-
-
-#[derive(SerJson, DeJson)]
+#[derive(Serialize, Deserialize)]
 pub struct Root {
-    #[nserde(rename = "data")]
+    #[serde(rename = "data")]
     data: Vec<Datum>,
 
-    #[nserde(rename = "meta")]
+    #[serde(rename = "meta")]
     meta: Meta,
 }
 
-#[derive(SerJson, DeJson)]
+#[derive(Serialize, Deserialize)]
 pub struct Datum {
-    #[nserde(rename = "url")]
+    #[serde(rename = "url")]
     url: String,
 
-    #[nserde(rename = "displayForm")]
+    #[serde(rename = "displayForm")]
     display_form: String,
 
-    #[nserde(rename = "nearbyWordOrdinal")]
+    #[serde(rename = "nearbyWordOrdinal")]
     nearby_word_ordinal: Option<i64>,
 
-    #[nserde(rename = "rank")]
+    #[serde(rename = "rank")]
     rank: Option<i64>,
 
-    #[nserde(rename = "tunaSlug")]
+    #[serde(rename = "tunaSlug")]
     tuna_slug: Option<String>,
 }
 
-#[derive(SerJson, DeJson)]
+#[derive(Serialize, Deserialize, Copy, Clone)]
 pub struct Meta {
-    #[nserde(rename = "totalResults")]
+    #[serde(rename = "totalResults")]
     total_results: i64,
 }
-
